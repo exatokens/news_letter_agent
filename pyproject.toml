@@ -1,0 +1,13 @@
+[project]
+name = "news-letter-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "crewai>=0.203.0",
+    "litellm>=1.74.9",
+    "nicegui>=3.0.4",
+    "python-dotenv>=1.1.1",
+    "thespian>=4.0.1",
+]

@@ -11,11 +11,11 @@ backstory: >
 
 task:
   description: >
-    Using the following summary for the topic "{{topic}}", craft a 2–3 paragraph editorial.
+    Using the following summary for the topic "{{topic}}", craft a 2-3 paragraph editorial.
     The piece should provide context, emotional depth, and human or industry implications.
 
     Summary content:
     {{summary}}
 
   expected_output: >
-    2–3 paragraphs of polished editorial prose suitable for newsletter publication.
+    2-3 paragraphs of polished editorial prose suitable for newsletter publication.

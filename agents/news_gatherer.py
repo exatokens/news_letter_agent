@@ -78,6 +78,11 @@ class NewsGathererAgent:
 
         last_message = state["messages"][-1]
 
+        # CRITICAL: Prevent infinite loops - max 2 tool calls allowed
+        if state["tool_calls_count"] >= 2:
+            logger.warning(f"⚠️  Maximum tool calls reached ({state['tool_calls_count']}). Forcing completion.")
+            return "end"
+
         # If there are tool calls, route to tools
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             logger.info("Routing to tool execution")

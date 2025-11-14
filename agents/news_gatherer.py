@@ -5,9 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from datetime import datetime
 import os
 import logging
-from IPython.display import Image, display
-from langchain_core.runnables.graph import MermaidDrawMethod
-
+from pathlib import Path
 
 from config.settings import settings
 from prompts.news_gatherer_prompts import NewsGathererPrompts
@@ -190,3 +188,38 @@ class NewsGathererAgent:
         
         return final_state
 
+
+    def visualize_graph(self, output_path: str = "workflow_graph.png", auto_open: bool = False) -> None:
+        """
+        Visualize the workflow graph and save to file
+
+        Args:
+            output_path: Path where the graph image will be saved
+            auto_open: Whether to automatically open the file after creation
+        """
+        try:
+            from langchain_core.runnables.graph import MermaidDrawMethod
+
+            png_data = self.graph.get_graph().draw_mermaid_png(
+                draw_method=MermaidDrawMethod.API
+            )
+
+            Path(output_path).write_bytes(png_data)
+            logger.info(f"Workflow graph saved to: {output_path}")
+
+            # Auto-open the file
+            if auto_open:
+                import platform
+                import subprocess
+
+                if platform.system() == 'Darwin':
+                    subprocess.run(['open', output_path])
+                elif platform.system() == 'Windows':
+                    subprocess.run(['start', output_path], shell=True)
+                else:  # Linux
+                    subprocess.run(['xdg-open', output_path])
+
+                logger.info(f"📊 Opened {output_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to generate PNG: {e}")

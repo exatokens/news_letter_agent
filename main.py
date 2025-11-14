@@ -49,7 +49,9 @@ def print_results(state):
 if __name__ == "__main__":
     # Initialize agent
     agent = NewsGathererAgent()
-    
+    print("Generating workflow graph...")
+    agent.visualize_graph("workflow_graph.png")
+    print("Graph saved to: workflow_graph.png\n")
     # Example 1: AI Technology
     print("\n🚀 EXAMPLE 1: AI Technology News")
     result1 = agent.run(

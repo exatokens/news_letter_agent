@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from datetime import datetime
 import os
 import logging
+from pathlib import Path
 
 from config.settings import settings
 from prompts.news_gatherer_prompts import NewsGathererPrompts
@@ -27,6 +28,7 @@ class NewsGathererAgent:
         self.prompts = NewsGathererPrompts()
         self.tools = [NewsTools.fetch_news]
         self.graph = self._build_graph()
+        
 
         # Log prompt metadata
         metadata = self.prompts.get_metadata()
@@ -54,14 +56,15 @@ class NewsGathererAgent:
 
             # Get LLM response
             logger.info("Invoking LLM for agent decision")
-            # import pdb;pdb.set_trace()
             response = llm_with_tools.invoke(messages)
 
             # Track tool calls
             if hasattr(response, "tool_calls") and response.tool_calls:
                 state["tool_calls_count"] += len(response.tool_calls)
                 logger.info(f"Agent made {len(response.tool_calls)} tool call(s)")
-
+            
+            # **CRITICAL: Add the response to messages**
+            state["messages"].append(response)
 
         except Exception as e:
             logger.error(f"Error in agent node: {str(e)}")
@@ -112,15 +115,18 @@ class NewsGathererAgent:
         return state
 
     def _build_graph(self) -> StateGraph:
-        """ BUild the Langgraph workflow"""
+        """ Build the Langgraph workflow"""
         workflow = StateGraph(NewsGathererState)
 
-        # addd nodes
+        # Add nodes
         workflow.add_node("agent", self._create_agent_node)
         workflow.add_node("tools", ToolNode(self.tools))
         workflow.add_node("extract_results", self._extract_results)
-        workflow.add_edge("tools", "agent")
+        
+        # Set entry point
         workflow.set_entry_point("agent")
+        
+        # Add conditional edges from agent
         workflow.add_conditional_edges(
             "agent",
             self._should_continue,
@@ -129,8 +135,13 @@ class NewsGathererAgent:
                 "end": "extract_results"
             }
         )
+        
+        # Add edge from tools back to agent (only once!)
         workflow.add_edge("tools", "agent")
+        
+        # Add final edge
         workflow.add_edge("extract_results", END)
+        
         # Compile
         logger.info("LangGraph workflow compiled")
         return workflow.compile()
@@ -177,3 +188,38 @@ class NewsGathererAgent:
         
         return final_state
 
+
+    def visualize_graph(self, output_path: str = "workflow_graph.png", auto_open: bool = False) -> None:
+        """
+        Visualize the workflow graph and save to file
+
+        Args:
+            output_path: Path where the graph image will be saved
+            auto_open: Whether to automatically open the file after creation
+        """
+        try:
+            from langchain_core.runnables.graph import MermaidDrawMethod
+
+            png_data = self.graph.get_graph().draw_mermaid_png(
+                draw_method=MermaidDrawMethod.API
+            )
+
+            Path(output_path).write_bytes(png_data)
+            logger.info(f"Workflow graph saved to: {output_path}")
+
+            # Auto-open the file
+            if auto_open:
+                import platform
+                import subprocess
+
+                if platform.system() == 'Darwin':
+                    subprocess.run(['open', output_path])
+                elif platform.system() == 'Windows':
+                    subprocess.run(['start', output_path], shell=True)
+                else:  # Linux
+                    subprocess.run(['xdg-open', output_path])
+
+                logger.info(f"📊 Opened {output_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to generate PNG: {e}")

@@ -146,7 +146,7 @@ system_prompt: |
   - Verified sources > unknown outlets
 
   ## What NOT to Do
-  ❌ Do NOT call fetch_news more than once
+  ❌ Do NOT call fetch_news more than twice
   ❌ Do NOT retry if you get zero results - just report it
   ❌ Do NOT select articles with missing/empty content
   ❌ Do NOT include broken or missing links

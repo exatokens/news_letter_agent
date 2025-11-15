@@ -74,22 +74,37 @@ class NewsGathererAgent:
         return state
 
     def _should_continue(self, state: NewsGathererState) -> str:
-        """Determine next step in workflow"""
+        """
+        Determine next step in workflow.
+        
+        Important: tool_calls_count has already been incremented in _create_agent_node
+        before this function is called.
+        """
 
         last_message = state["messages"][-1]
 
-        # CRITICAL: Prevent infinite loops - max 2 tool calls allowed
-        if state["tool_calls_count"] >= 2:
-            logger.warning(f"⚠️  Maximum tool calls reached ({state['tool_calls_count']}). Forcing completion.")
-            return "end"
-
-        # If there are tool calls, route to tools
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            logger.info("Routing to tool execution")
+        # Check if agent wants to make tool calls
+        has_tool_calls = hasattr(last_message, "tool_calls") and last_message.tool_calls
+        
+        if has_tool_calls:
+            # The count was already incremented, so if it's > 1, we're on attempt #2 or higher
+            # Allow first call (count=1) and one retry (count=2), but block beyond that
+            if state["tool_calls_count"] > 2:
+                logger.warning(
+                    f"⚠️  Maximum tool calls exceeded (attempted {state['tool_calls_count']}, max 2). "
+                    f"Forcing completion without executing tools."
+                )
+                return "end"
+            
+            if state["tool_calls_count"] == 2:
+                logger.info(f"🔄 Executing retry attempt (call #{state['tool_calls_count']})")
+            else:
+                logger.info(f"🔧 Executing tool call #{state['tool_calls_count']}")
+            
             return "tools"
 
-        # Otherwise, we're done
-        logger.info("Workflow complete")
+        # No tool calls = agent finished analysis
+        logger.info("✅ Workflow complete - agent finished analysis")
         return "end"
 
     def _extract_results(self, state: NewsGathererState) -> NewsGathererState:
@@ -99,21 +114,25 @@ class NewsGathererAgent:
             # Find the final AI message (after tool use)
             final_message = None
             for msg in reversed(state["messages"]):
-                if isinstance(msg, AIMessage) and not hasattr(msg, "tool_calls"):
-                    final_message = msg
-                    break
+                if isinstance(msg, AIMessage):
+                    # Check if this message has content (not just tool calls)
+                    if msg.content and len(msg.content.strip()) > 0:
+                        # This is a substantive response, not just a tool call
+                        if not (hasattr(msg, "tool_calls") and msg.tool_calls and not msg.content.strip()):
+                            final_message = msg
+                            break
 
             if final_message:
                 state["status"] = "completed"
-                logger.info("Results extracted successfully! Cheers..")
+                logger.info("✅ Results extracted successfully! Newsletter curation complete.")
             else:
                 state["status"] = "incomplete"
-                logger.warning("No final message found")
+                logger.warning("⚠️  No final message found - agent may not have completed analysis")
 
             state["timestamp"] = datetime.now().isoformat()
 
         except Exception as e:
-            logger.error(f"Error extracting results: {str(e)}")
+            logger.error(f"❌ Error extracting results: {str(e)}")
             state["status"] = "error"
             state["error"] = str(e)
 

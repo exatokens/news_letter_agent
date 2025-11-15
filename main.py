@@ -42,7 +42,7 @@ def print_results(state):
                 content = json.loads(msg.content)
                 if content.get("status") == "success":
                     print(f"✅ TOOL RESULT: Found {content.get('count')} articles\n")
-            except:
+            except Exception as e:
                 pass
 
 
@@ -63,11 +63,11 @@ if __name__ == "__main__":
     print_results(result1)
     
     
-    # Example 2: Sports
-    print("\n\n🚀 EXAMPLE 2: Sports News")
-    result2 = agent.run(
-        user_request="Find recent news about Cristiano Ronaldo. I want stories "
-                    "with good depth and interesting content.",
-        top_articles=3
-    )
-    print_results(result2)
+    # # Example 2: Sports
+    # print("\n\n🚀 EXAMPLE 2: Sports News")
+    # result2 = agent.run(
+    #     user_request="Find recent news about Cristiano Ronaldo. I want stories "
+    #                 "with good depth and interesting content.",
+    #     top_articles=3
+    # )
+    # print_results(result2)
